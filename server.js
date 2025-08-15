@@ -221,7 +221,18 @@ app.put('/api/admin/application/:id/review', authenticateToken, isAdmin, async (
     }
 });
 
-app.listen(3000, () => console.log('Server running on port http://localhost:3000'));
+// Use the PORT environment variable for Render, fallback to 3000 for local development
+const port = process.env.PORT || 3000;
+
+// Start the server after MongoDB connection is established
+connectToMongoDB().then(() => {
+    app.listen(port, '0.0.0.0', () => {
+        console.log(`Server is running on port ${port}`);
+    });
+}).catch(err => {
+    console.error('Fatal error during MongoDB connection:', err);
+    process.exit(1);
+});
 
 // Initialize some sample schemes
 async function initSchemes() {
