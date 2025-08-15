@@ -146,27 +146,111 @@ function isAdmin(req, res, next) {
 
 app.post('/api/register', async (req, res) => {
     try {
+        console.log('Registration attempt:', { email: req.body.email, role: req.body.role });
         const { email, password, role } = req.body;
+        
+        // Input validation
+        if (!email || !password) {
+            console.log('Missing required fields');
+            return res.status(400).json({ message: 'Email and password are required' });
+        }
+        
+        // Check if user already exists
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            console.log('User already exists:', email);
+            return res.status(400).json({ message: 'User already exists' });
+        }
+        
+        // Create new user
         const hashedPassword = await bcrypt.hash(password, 10);
-        const user = new User({ email, password: hashedPassword, role });
+        const user = new User({ 
+            email, 
+            password: hashedPassword, 
+            role: role || 'citizen' // Default role
+        });
+        
         await user.save();
-        res.status(201).json({ message: 'User registered' });
+        console.log('User registered successfully:', email);
+        res.status(201).json({ 
+            success: true,
+            message: 'User registered successfully',
+            userId: user._id
+        });
     } catch (err) {
-        res.status(400).json({ message: 'Error registering user' });
+        console.error('Registration error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error registering user',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
 app.post('/api/login', async (req, res) => {
     try {
+        console.log('Login attempt:', { email: req.body.email });
         const { email, password } = req.body;
-        const user = await User.findOne({ email });
-        if (!user || !await bcrypt.compare(password, user.password)) {
-            return res.status(401).json({ message: 'Invalid credentials' });
+
+        // Input validation
+        if (!email || !password) {
+            console.log('Missing email or password');
+            return res.status(400).json({ 
+                success: false,
+                message: 'Email and password are required' 
+            });
         }
-        const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, { expiresIn: '1h' });
-        res.json({ token, role: user.role });
+
+        // Find user
+        const user = await User.findOne({ email });
+        if (!user) {
+            console.log('User not found:', email);
+            return res.status(401).json({ 
+                success: false,
+                message: 'Invalid email or password' 
+            });
+        }
+
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
+            console.log('Invalid password for user:', email);
+            return res.status(401).json({ 
+                success: false,
+                message: 'Invalid email or password' 
+            });
+        }
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { 
+                id: user._id, 
+                role: user.role,
+                email: user.email
+            }, 
+            JWT_SECRET, 
+            { 
+                expiresIn: '24h', // Increased from 1h to 24h for better user experience
+                algorithm: 'HS256'
+            }
+        );
+
+        console.log('Login successful for user:', email);
+        res.json({ 
+            success: true,
+            message: 'Login successful',
+            token,
+            role: user.role,
+            email: user.email
+        });
+
     } catch (err) {
-        res.status(500).json({ message: 'Error logging in' });
+        console.error('Login error:', err);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error during login',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
     }
 });
 
