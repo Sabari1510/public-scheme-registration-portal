@@ -26,31 +26,81 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost/scheme-porta
 
 // MongoDB connection options
 const mongoOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 30000, // 30 seconds timeout
-    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    // Remove deprecated options
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
     family: 4, // Use IPv4, skip trying IPv6
-    maxPoolSize: 10, // Maintain up to 10 socket connections
-    connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
+    maxPoolSize: 10,
+    connectTimeoutMS: 10000,
     retryWrites: true,
-    w: 'majority'
+    w: 'majority',
+    // Add server API for MongoDB Atlas
+    serverApi: {
+        version: '1',
+        strict: true,
+        deprecationErrors: true,
+    }
 };
 
-console.log('Attempting to connect to MongoDB...');
-mongoose.connect(MONGODB_URI, mongoOptions)
-    .then(() => {
-        console.log('Successfully connected to MongoDB');
-        // Verify the connection
-        return mongoose.connection.db.admin().ping();
-    })
-    .then(() => {
-        console.log('MongoDB connection is healthy');
-    })
-    .catch(err => {
-        console.error('MongoDB connection error:', err);
-        process.exit(1);
-    });
+// Function to connect to MongoDB with retry logic
+async function connectToMongoDB() {
+    const maxRetries = 3;
+    let retryCount = 0;
+    
+    while (retryCount < maxRetries) {
+        try {
+            console.log(`Attempting to connect to MongoDB (Attempt ${retryCount + 1}/${maxRetries})...`);
+            
+            // Close any existing connections first
+            if (mongoose.connection.readyState === 1) {
+                await mongoose.disconnect();
+            }
+            
+            // Connect with the new connection options
+            await mongoose.connect(MONGODB_URI, mongoOptions);
+            
+            // Verify the connection
+            await mongoose.connection.db.admin().ping();
+            console.log('✅ Successfully connected to MongoDB');
+            console.log(`MongoDB Host: ${mongoose.connection.host}`);
+            console.log(`MongoDB Database: ${mongoose.connection.name}`);
+            
+            // Connection event handlers
+            mongoose.connection.on('error', (err) => {
+                console.error('MongoDB connection error:', err);
+            });
+            
+            mongoose.connection.on('disconnected', () => {
+                console.log('MongoDB disconnected');
+            });
+            
+            return; // Successfully connected, exit the function
+            
+        } catch (error) {
+            retryCount++;
+            console.error(`❌ MongoDB connection attempt ${retryCount} failed:`, error.message);
+            
+            if (retryCount === maxRetries) {
+                console.error('❌ Maximum number of retries reached. Could not connect to MongoDB.');
+                console.error('Please check the following:');
+                console.error('1. Is your MongoDB Atlas cluster running?');
+                console.error('2. Is your IP whitelisted in MongoDB Atlas?');
+                console.error('3. Are your MongoDB credentials correct?');
+                console.error('4. Is there a network/firewall issue?');
+                process.exit(1);
+            }
+            
+            // Wait for 2 seconds before retrying
+            await new Promise(resolve => setTimeout(resolve, 2000));
+        }
+    }
+}
+
+// Start the MongoDB connection
+connectToMongoDB().catch(err => {
+    console.error('Fatal error during MongoDB connection:', err);
+    process.exit(1);
+});
 
 const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
