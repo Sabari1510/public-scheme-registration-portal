@@ -170,25 +170,51 @@
             const email = document.getElementById('reg-email').value;
             const password = document.getElementById('reg-password').value;
             const role = document.getElementById('reg-role').value;
+            const errorElement = document.getElementById('reg-error');
+            const successElement = document.getElementById('reg-success');
+            
+            // Clear previous messages
+            errorElement.style.display = 'none';
+            successElement.style.display = 'none';
+            
             try {
+                console.log('Attempting to register:', { email, role });
                 const res = await fetch(`${API_BASE_URL}/api/register`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
                     body: JSON.stringify({ email, password, role })
                 });
-                const data = await res.json();
+                
+                console.log('Registration response status:', res.status);
+                
+                // Try to parse response as JSON, but handle non-JSON responses
+                let data;
+                try {
+                    data = await res.json();
+                    console.log('Registration response data:', data);
+                } catch (parseError) {
+                    const text = await res.text();
+                    console.error('Failed to parse JSON response:', text);
+                    throw new Error(`Server returned ${res.status}: ${text}`);
+                }
+                
                 if (res.ok) {
-                    document.getElementById('reg-success').textContent = 'Registration successful! Please login.';
-                    document.getElementById('reg-success').style.display = 'block';
-                    document.getElementById('reg-error').style.display = 'none';
+                    successElement.textContent = 'Registration successful! Please login.';
+                    successElement.style.display = 'block';
                     showLogin();
                 } else {
-                    document.getElementById('reg-error').textContent = data.message;
-                    document.getElementById('reg-error').style.display = 'block';
+                    const errorMessage = data.message || data.error || 'Registration failed';
+                    console.error('Registration failed:', errorMessage);
+                    errorElement.textContent = errorMessage;
+                    errorElement.style.display = 'block';
                 }
             } catch (err) {
-                document.getElementById('reg-error').textContent = 'Error registering';
-                document.getElementById('reg-error').style.display = 'block';
+                console.error('Registration error:', err);
+                errorElement.textContent = `Error: ${err.message || 'Failed to register. Please try again.'}`;
+                errorElement.style.display = 'block';
             }
         }
 
