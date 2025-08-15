@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Scheme Registration Portal</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        h1, h2 {
+            text-align: center;
+        }
+        .section {
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: violet;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .schemes, .applications {
+            list-style: none;
+            padding: 0;
+        }
+        .schemes li, .applications li {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        .error {
+            color: red;
+            display: none;
+        }
+        .success {
+            color: green;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Public Scheme Registration Portal</h1>
+        <button id="logoutBtn" style="display:none; float:right;">Logout</button>
+
+        <!-- Login Section -->
+        <div class="section" id="auth-section">
+            <h2>Login</h2>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter password">
+            </div>
+            <button onclick="login()">Login</button>
+            <p>Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
+            <p class="error" id="auth-error"></p>
+        </div>
+
+        <!-- Register Section -->
+        <div class="section" id="register-section" style="display: none;">
+            <h2>Register</h2>
+            <div class="form-group">
+                <label for="reg-email">Email</label>
+                <input type="email" id="reg-email" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+                <label for="reg-password">Password</label>
+                <input type="password" id="reg-password" placeholder="Enter password">
+            </div>
+            <div class="form-group">
+                <label for="reg-role">Role</label>
+                <select id="reg-role">
+                    <option value="citizen">Citizen</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <button onclick="register()">Register</button>
+            <p>Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+            <p class="success" id="reg-success"></p>
+            <p class="error" id="reg-error"></p>
+        </div>
+
+        <!-- Schemes Section -->
+        <div class="section" id="schemes-section" style="display: none;">
+            <h2>Available Schemes</h2>
+            <ul class="schemes" id="schemes-list"></ul>
+        </div>
+
+        <!-- Application Form -->
+        <div class="section" id="apply-section" style="display: none;">
+            <h2>Apply for Scheme</h2>
+            <div class="form-group">
+                <label for="scheme-id">Select Scheme</label>
+                <select id="scheme-id"></select>
+            </div>
+            <div class="form-group">
+                <label for="form-data">Details (JSON format)</label>
+                <input type="text" id="form-data" placeholder='e.g. {"income": 50000, "dependents": 2}'>
+            </div>
+            <button onclick="apply()">Submit Application</button>
+            <p class="success" id="apply-success"></p>
+            <p class="error" id="apply-error"></p>
+        </div>
+
+        <!-- Status Check -->
+        <div class="section" id="status-section" style="display: none;">
+            <h2>Check Application Status</h2>
+            <div class="form-group">
+                <label for="app-id">Application ID</label>
+                <input type="text" id="app-id" placeholder="Enter application ID">
+            </div>
+            <button onclick="checkStatus()">Check Status</button>
+            <p class="success" id="status-success"></p>
+            <p class="error" id="status-error"></p>
+        </div>
+
+        <!-- Admin Review -->
+        <div class="section" id="admin-section" style="display: none;">
+            <h2>Admin: Review Applications</h2>
+            <ul class="applications" id="applications-list"></ul>
+        </div>
+    </div>
+
+    <script>
+        let token = null;
+        let role = null;
+
+        function showRegister() {
+            document.getElementById('auth-section').style.display = 'none';
+            document.getElementById('register-section').style.display = 'block';
+        }
+
+        function showLogin() {
+            document.getElementById('register-section').style.display = 'none';
+            document.getElementById('auth-section').style.display = 'block';
+        }
+
+        async function register() {
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-password').value;
+            const role = document.getElementById('reg-role').value;
+            try {
+                const res = await fetch('http://localhost:3000/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password, role })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('reg-success').textContent = 'Registration successful! Please login.';
+                    document.getElementById('reg-success').style.display = 'block';
+                    document.getElementById('reg-error').style.display = 'none';
+                    showLogin();
+                } else {
+                    document.getElementById('reg-error').textContent = data.message;
+                    document.getElementById('reg-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('reg-error').textContent = 'Error registering';
+                document.getElementById('reg-error').style.display = 'block';
+            }
+        }
+
+        async function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            try {
+                const res = await fetch('http://localhost:3000/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    token = data.token;
+                    role = data.role;
+                    localStorage.setItem('token', token);
+                    localStorage.setItem('role', role);
+
+                    document.getElementById('auth-section').style.display = 'none';
+                    document.getElementById('schemes-section').style.display = 'block';
+                    document.getElementById('apply-section').style.display = 'block';
+                    document.getElementById('status-section').style.display = 'block';
+                    if (role === 'admin') {
+                        document.getElementById('admin-section').style.display = 'block';
+                    }
+                    loadSchemes();
+                    if (role === 'admin') loadApplications();
+                    updateLogoutButton(); // Explicitly show button after login
+                } else {
+                    document.getElementById('auth-error').textContent = data.message;
+                    document.getElementById('auth-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('auth-error').textContent = 'Error logging in';
+                document.getElementById('auth-error').style.display = 'block';
+            }
+        }
+
+        async function loadSchemes() {
+            try {
+                const res = await fetch('http://localhost:3000/api/schemes', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const schemes = await res.json();
+                const schemeList = document.getElementById('schemes-list');
+                const schemeSelect = document.getElementById('scheme-id');
+                schemeList.innerHTML = '';
+                schemeSelect.innerHTML = '';
+                schemes.forEach(scheme => {
+                    const li = document.createElement('li');
+                    li.textContent = `${scheme.name}: ${scheme.description}`;
+                    schemeList.appendChild(li);
+                    const option = document.createElement('option');
+                    option.value = scheme._id;
+                    option.textContent = scheme.name;
+                    schemeSelect.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Error loading schemes');
+            }
+        }
+
+        async function apply() {
+            const schemeId = document.getElementById('scheme-id').value;
+            const formData = document.getElementById('form-data').value;
+            try {
+                const res = await fetch('http://localhost:3000/api/apply', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ schemeId, formData })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('apply-success').textContent = `Application submitted! ID: ${data.applicationId}`;
+                    document.getElementById('apply-success').style.display = 'block';
+                    document.getElementById('apply-error').style.display = 'none';
+                } else {
+                    document.getElementById('apply-error').textContent = data.message;
+                    document.getElementById('apply-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('apply-error').textContent = 'Error submitting application';
+                document.getElementById('apply-error').style.display = 'block';
+            }
+        }
+
+        async function checkStatus() {
+            const appId = document.getElementById('app-id').value;
+            try {
+                const res = await fetch(`http://localhost:3000/api/application/${appId}/status`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    document.getElementById('status-success').textContent = `Status: ${data.status}`;
+                    document.getElementById('status-success').style.display = 'block';
+                    document.getElementById('status-error').style.display = 'none';
+                } else {
+                    document.getElementById('status-error').textContent = data.message;
+                    document.getElementById('status-error').style.display = 'block';
+                }
+            } catch (err) {
+                document.getElementById('status-error').textContent = 'Error checking status';
+                document.getElementById('status-error').style.display = 'block';
+            }
+        }
+
+        async function loadApplications() {
+            try {
+                const res = await fetch('http://localhost:3000/api/admin/applications', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const applications = await res.json();
+                const appList = document.getElementById('applications-list');
+                appList.innerHTML = '';
+                applications.forEach(app => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `App ID: ${app._id}, Scheme: ${app.schemeId.name}, Status: ${app.status} 
+                        <button onclick="reviewApplication('${app._id}', 'approved')">Approve</button>
+                        <button onclick="reviewApplication('${app._id}', 'rejected')">Reject</button>`;
+                    appList.appendChild(li);
+                });
+            } catch (err) {
+                console.error('Error loading applications');
+            }
+        }
+
+        async function reviewApplication(appId, decision) {
+            try {
+                const res = await fetch(`http://localhost:3000/api/admin/application/${appId}/review`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ decision, remarks: `${decision} by admin` })
+                });
+                if (res.ok) {
+                    loadApplications();
+                } else {
+                    console.error('Error reviewing application');
+                }
+            } catch (err) {
+                console.error('Error reviewing application');
+            }
+        }
+
+        // Logout functionality
+        document.getElementById('logoutBtn').addEventListener('click', function() {
+            // Clear session
+            token = null;
+            role = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('role');
+
+            // Hide all sections except auth/register
+            document.getElementById('schemes-section').style.display = 'none';
+            document.getElementById('apply-section').style.display = 'none';
+            document.getElementById('status-section').style.display = 'none';
+            document.getElementById('admin-section').style.display = 'none';
+
+            // Hide logout button and show login form
+            document.getElementById('logoutBtn').style.display = 'none';
+            showLogin();
+        });
+
+        // Show/hide logout button based on auth
+        function updateLogoutButton() {
+            if (localStorage.getItem('token')) {
+                document.getElementById('logoutBtn').style.display = 'block';
+            } else {
+                document.getElementById('logoutBtn').style.display = 'none';
+            }
+        }
+
+        // Call updateLogoutButton after login/register
+        // Also call on load
+        updateAuthOnLoad();
+        // Also call on load
+        updateLogoutButton();
+    </script>
+</body>
+</html>
