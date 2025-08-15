@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -20,7 +21,36 @@ app.get('/', (req, res) => {
 // Handle favicon.ico requests gracefully
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 
-mongoose.connect('mongodb://localhost/scheme-portal', { useNewUrlParser: true, useUnifiedTopology: true });
+// MongoDB connection with environment variables
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost/scheme-portal';
+
+// MongoDB connection options
+const mongoOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 30000, // 30 seconds timeout
+    socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+    family: 4, // Use IPv4, skip trying IPv6
+    maxPoolSize: 10, // Maintain up to 10 socket connections
+    connectTimeoutMS: 10000, // Give up initial connection after 10 seconds
+    retryWrites: true,
+    w: 'majority'
+};
+
+console.log('Attempting to connect to MongoDB...');
+mongoose.connect(MONGODB_URI, mongoOptions)
+    .then(() => {
+        console.log('Successfully connected to MongoDB');
+        // Verify the connection
+        return mongoose.connection.db.admin().ping();
+    })
+    .then(() => {
+        console.log('MongoDB connection is healthy');
+    })
+    .catch(err => {
+        console.error('MongoDB connection error:', err);
+        process.exit(1);
+    });
 
 const userSchema = new mongoose.Schema({
     email: { type: String, unique: true, required: true },
@@ -46,7 +76,7 @@ const applicationSchema = new mongoose.Schema({
 });
 const Application = mongoose.model('Application', applicationSchema);
 
-const JWT_SECRET = 'your_jwt_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];

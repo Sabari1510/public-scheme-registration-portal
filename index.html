@@ -368,10 +368,36 @@
             }
         }
 
-        // Call updateLogoutButton after login/register
-        // Also call on load
+        // Function to handle authentication state on page load
+        function updateAuthOnLoad() {
+            const token = localStorage.getItem('token');
+            const adminSection = document.getElementById('adminSection');
+            const citizenSection = document.getElementById('citizenSection');
+            const loginSection = document.getElementById('loginSection');
+            
+            // Hide all sections first
+            if (adminSection) adminSection.style.display = 'none';
+            if (citizenSection) citizenSection.style.display = 'none';
+            if (loginSection) loginSection.style.display = 'none';
+            
+            if (token) {
+                // If user is logged in, show appropriate content
+                if (window.location.hash === '#admin' && adminSection) {
+                    adminSection.style.display = 'block';
+                    loadApplications();
+                } else if (citizenSection) {
+                    citizenSection.style.display = 'block';
+                    loadSchemes();
+                    checkStatus();
+                }
+            } else if (loginSection) {
+                // If not logged in, show login form
+                loginSection.style.display = 'block';
+            }
+        }
+
+        // Initialize authentication state on page load
         updateAuthOnLoad();
-        // Also call on load
         updateLogoutButton();
     </script>
 </body>
