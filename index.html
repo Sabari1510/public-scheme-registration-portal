@@ -171,7 +171,7 @@
             const password = document.getElementById('reg-password').value;
             const role = document.getElementById('reg-role').value;
             try {
-                const res = await fetch('http://localhost:3000/api/register', {
+                const res = await fetch(`${API_BASE_URL}/api/register`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password, role })
@@ -196,7 +196,7 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             try {
-                const res = await fetch('http://localhost:3000/api/login', {
+                const res = await fetch(`${API_BASE_URL}/api/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password })
@@ -230,7 +230,7 @@
 
         async function loadSchemes() {
             try {
-                const res = await fetch('http://localhost:3000/api/schemes', {
+                const res = await fetch(`${API_BASE_URL}/api/schemes`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const schemes = await res.json();
@@ -256,7 +256,7 @@
             const schemeId = document.getElementById('scheme-id').value;
             const formData = document.getElementById('form-data').value;
             try {
-                const res = await fetch('http://localhost:3000/api/apply', {
+                const res = await fetch(`${API_BASE_URL}/api/apply`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -282,7 +282,7 @@
         async function checkStatus() {
             const appId = document.getElementById('app-id').value;
             try {
-                const res = await fetch(`http://localhost:3000/api/application/${appId}/status`, {
+                const res = await fetch(`${API_BASE_URL}/api/application/${appId}/status`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const data = await res.json();
@@ -302,7 +302,7 @@
 
         async function loadApplications() {
             try {
-                const res = await fetch('http://localhost:3000/api/admin/applications', {
+                const res = await fetch(`${API_BASE_URL}/api/admin/applications`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 const applications = await res.json();
@@ -322,7 +322,7 @@
 
         async function reviewApplication(appId, decision) {
             try {
-                const res = await fetch(`http://localhost:3000/api/admin/application/${appId}/review`, {
+                const res = await fetch(`${API_BASE_URL}/api/admin/application/${appId}/review`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
